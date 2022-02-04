@@ -35,7 +35,7 @@ def transmission_estimate(img, atm_light, size):
     return (255 * (1 - (w * dark_channel((img / atm_light), size)))).astype(np.uint8)
 
 def refine_transmission(img, transmission_estimate_img):
-    r = 30      # radius of kernel
+    r = 60      # radius of kernel
     e = 0.0001  # regularization
 
     gray_scale_img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY);
@@ -87,7 +87,8 @@ def refine_transmission(img, transmission_estimate_img):
 
 
 if __name__ == '__main__':
-    file_path = "~/proj-x/fog-mask/img/input/foggy_cityscape.png"
+    file_name = "extremely_foggy_highway"
+    file_path = "~/proj-x/fog-mask/img/input/{}.png".format(file_name)
 
     img = io.imread(file_path)
     dark_channel_img = dark_channel(img, 15)
@@ -97,7 +98,7 @@ if __name__ == '__main__':
 
     refined_transmission_img = refine_transmission(img, transmission_estimate_img)
 
-    io.imsave('img/dark-channel/dark_channel.png', dark_channel_img)
-    io.imsave('img/dark-channel/transmission_estimate.png', transmission_estimate_img)
-    io.imsave('img/dark-channel/refined_transmission.png', refined_transmission_img)
+    io.imsave('img/dark-channel/dark_channel_{}.png'.format(file_name), dark_channel_img)
+    io.imsave('img/dark-channel/transmission_estimate_{}.png'.format(file_name), transmission_estimate_img)
+    io.imsave('img/dark-channel/refined_transmission_{}.png'.format(file_name), refined_transmission_img)
     
