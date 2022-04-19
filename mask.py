@@ -2,9 +2,21 @@ import numpy as np
 import math
 import skimage, skimage.io as io, skimage.morphology as morph, skimage.color as color, skimage.filters.rank as rank
 import cv2
+import argparse
+import os
+from glob import glob
+import logging
 
 # value of 0 = masked
 # value of 1 = unmasked
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--foggy-dir', type=str, required=True)
+    parser.add_argument('--mask-dir', type=str, required=True)
+
+    return parser.parse_args()
 
 def dark_channel(img, size):
     dark_channel_img = np.amin(img, axis=2)
@@ -87,10 +99,70 @@ def refine_transmission(img, transmission_estimate_img):
 
 
 if __name__ == '__main__':
-    file_name = "extremely_foggy_highway"
-    file_path = "~/proj-x/fog-mask/img/input/{}.png".format(file_name)
+    # file_name = "extremely_foggy_highway"
+    # file_path = "~/proj-x/fog-mask/img/input/{}.png".format(file_name)
+    logging.getLogger().setLevel(logging.INFO)
+    logging.info("Beginning mask.py")
 
-    img = io.imread(file_path)
+    args = parse_args()
+
+    src_dir = args.foggy_dir
+    dest_dir = args.mask_dir
+
+    '''paths = glob('{:s}/*.png'.format(src_dir))
+    other_paths = glob('{:s}/*.png'.format('/mnt/shared/home/kyleli2/proj-x/data/ground-truth'))
+    paths.sort()
+    other_paths.sort()
+    for i in range(len(other_paths)):
+        print(paths[i] + ", " + other_paths[i] + "\n")'''
+
+    src_file_paths = glob('{:s}/**/*.png'.format(src_dir), recursive=True)
+    
+    for src_file_path in src_file_paths:
+        src_img = io.imread(src_file_path)
+
+        dark_channel_img = dark_channel(src_img, 15)
+        atm_light = atmospheric_light(src_img, dark_channel_img)
+        transmission_estimate_img = transmission_estimate(src_img, atm_light, 15)
+        refined_transmission_img = refine_transmission(src_img, transmission_estimate_img)
+
+        src_rel_path = os.path.relpath(src_file_path, start=src_dir)
+        output_rel_path = src_rel_path[:-4] + "_mask.png"
+        output_file_path = os.path.join(dest_dir, output_rel_path)
+
+        _, src_file_name = os.path.split(src_file_path)
+        output_dir, _ = os.path.split(output_file_path)
+
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+            logging.info("Output directory, {}, does not exist. Successfully created output directory".format(output_dir))
+
+        io.imsave(output_file_path, refined_transmission_img)
+        logging.info("Saved mask for {} as {}".format(src_file_name, output_file_path))
+
+
+    '''
+    for src_file_name in os.listdir(src_dir):
+        src_file_path = os.path.join(src_dir, src_file_name)
+
+        src_img = io.imread(src_file_path)
+
+        dark_channel_img = dark_channel(src_img, 15)
+    
+        atm_light = atmospheric_light(src_img, dark_channel_img)
+        transmission_estimate_img = transmission_estimate(src_img, atm_light, 15)
+
+        refined_transmission_img = refine_transmission(src_img, transmission_estimate_img)
+
+        output_file_name = src_file_name.split('_')[0] + "_mask.jpg"
+        io.imsave(os.path.join(dest_dir, output_file_name), refined_transmission_img)
+        logging.info("saved {}".format(output_file_name))'''
+
+
+    '''file_name = "01_hazy"
+    file_path = "~/nitre_data/NH-HAZE/{}.png".format(file_name)
+
+    img =
     dark_channel_img = dark_channel(img, 15)
     
     atm_light = atmospheric_light(img, dark_channel_img)
@@ -100,5 +172,5 @@ if __name__ == '__main__':
 
     io.imsave('img/dark-channel/dark_channel_{}.png'.format(file_name), dark_channel_img)
     io.imsave('img/dark-channel/transmission_estimate_{}.png'.format(file_name), transmission_estimate_img)
-    io.imsave('img/dark-channel/refined_transmission_{}.png'.format(file_name), refined_transmission_img)
+    io.imsave('img/dark-channel/refined_transmission_{}.png'.format(file_name), refined_transmission_img)'''
     
