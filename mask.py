@@ -15,6 +15,7 @@ def parse_args():
 
     parser.add_argument('--foggy-dir', type=str, required=True)
     parser.add_argument('--mask-dir', type=str, required=True)
+    parser.add_argument('-r', '--resume', action='store_true', help="resume run")
 
     return parser.parse_args()
 
@@ -108,17 +109,12 @@ if __name__ == '__main__':
 
     src_dir = args.foggy_dir
     dest_dir = args.mask_dir
+    resume = args.resume
 
     src_file_paths = glob('{:s}/**/*.png'.format(src_dir), recursive=True)
     
     for src_file_path in src_file_paths:
-        src_img = io.imread(src_file_path)
-
-        dark_channel_img = dark_channel(src_img, 15)
-        atm_light = atmospheric_light(src_img, dark_channel_img)
-        transmission_estimate_img = transmission_estimate(src_img, atm_light, 15)
-        refined_transmission_img = refine_transmission(src_img, transmission_estimate_img)
-
+        # set up file paths
         src_rel_path = os.path.relpath(src_file_path, start=src_dir)
         output_rel_path = src_rel_path[:-4] + "_mask.png"
         output_file_path = os.path.join(dest_dir, output_rel_path)
@@ -126,10 +122,25 @@ if __name__ == '__main__':
         _, src_file_name = os.path.split(src_file_path)
         output_dir, _ = os.path.split(output_file_path)
 
+        # if resume and file exits, skip it
+        if resume and os.path.isfile(output_file_path):
+            logging.info("RESUME: SKIP {}. It already exitst".format(src_file_name))
+            continue
+
+        # create output file dir if it doesn't exist
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
             logging.info("Output directory, {}, does not exist. Successfully created output directory".format(output_dir))
 
+        # read image and compute dark channel prior
+        src_img = io.imread(src_file_path)
+
+        dark_channel_img = dark_channel(src_img, 15)
+        atm_light = atmospheric_light(src_img, dark_channel_img)
+        transmission_estimate_img = transmission_estimate(src_img, atm_light, 15)
+        refined_transmission_img = refine_transmission(src_img, transmission_estimate_img)
+
+        # save everything
         io.imsave(output_file_path, refined_transmission_img)
         logging.info("Saved mask for {} as {}".format(src_file_name, output_file_path))
     
